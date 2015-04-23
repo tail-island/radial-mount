@@ -61,7 +61,7 @@
    (partial validate-binary :less-than            <                              :must-be-less-than)
    (partial validate-unary  :presence             (complement nil?)              :must-be-present)])
 
-;; TODO: dateやtimestampの場合の>=等の比較について、検討する。
+;; TODO: dateやtimestampの場合の>=等での比較について、検討する。
 
 (defn- format-errors
   [database-errors]
