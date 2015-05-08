@@ -15,7 +15,7 @@
 
 (defn property-message-key
   [table-key property-key]
-  (keyword (apply format "%s$%s" (map name [table-key property-key]))))
+  (keyword (apply format "%s!%s" (map name [table-key property-key]))))
 
 (defn- validate-unary
   [validate-key valid?-fn default-message-key database-schema table-key row & [row-errors]]
