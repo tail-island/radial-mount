@@ -1,5 +1,4 @@
 (ns radial-mount.core
-  (:use     (radial-mount common))
   (:require (clojure      [string :as string])
             (twin-spar    [core   :as twin-spar])
             (dog-mission  [core   :as dog-mission])))
@@ -15,7 +14,7 @@
 
 (defn property-message-key
   [table-key property-key]
-  (keyword (apply format "%s!%s" (map name [table-key property-key]))))
+  (keyword (apply format "%s_%s" (map name [table-key property-key]))))
 
 (defn- validate-unary
   [validate-key valid?-fn default-message-key database-schema table-key row & [row-errors]]
@@ -75,12 +74,16 @@
                  (map format-property-error)))
           (format-row-errors [row-errors]
             (->> row-errors
-                 (reduce-kv #(assoc %1 %2 (format-property-errors %3)) nil)))
+                 (reduce-kv #(assoc %1 %2 (format-property-errors %3)) {})))
           (format-table-errors [table-errors]
             (->> table-errors
-                 (reduce-kv #(assoc %1 %2 (format-row-errors %3)) nil)))]
+                 (reduce-kv #(assoc %1 %2 (format-row-errors %3)) {})))]
     (->> database-errors
-         (reduce-kv #(assoc %1 %2 (format-table-errors %3)) nil))))
+         (reduce-kv #(assoc %1 %2 (format-table-errors %3)) {}))))
+
+(defn- dissoc-empty-value-entries
+  [map]
+  (not-empty (into {} (remove (comp empty? second) map))))
 
 (defn validate
   [database-schema database]
@@ -88,9 +91,9 @@
             ((apply comp (map #(partial % database-schema table-key row) validates))))
           (validate-table [table-key table]
             (->> table
-                 (reduce-kv #(assoc %1 %2 (validate-row table-key %3)) nil)
-                 (dissoc-nil-value-entries)))]
+                 (reduce (fn [result [row-key _]] (assoc result row-key (validate-row table-key (get-in database [table-key row-key])))) {})  ; relationshipについてもチェックできるようにするために、データを再取得します。
+                 (dissoc-empty-value-entries)))]
     (->> (apply merge-with merge ((juxt twin-spar/get-inserted-rows twin-spar/get-modified-rows) database))
-         (reduce-kv #(assoc %1 %2 (validate-table %2 %3)) nil)
+         (reduce-kv #(assoc %1 %2 (validate-table %2 %3)) {})
          (format-errors)
-         (dissoc-nil-value-entries))))
+         (dissoc-empty-value-entries))))
